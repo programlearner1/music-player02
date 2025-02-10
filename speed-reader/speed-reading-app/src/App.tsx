@@ -5,6 +5,7 @@ import Settings from "./pages/Settings"; // Make sure this file exists with corr
 import { SpeedProvider } from "./context/speedcontext"; // Check case and path
 import "./styles/global.css";
 
+
 const App = () => {
   return (
     <SpeedProvider>
