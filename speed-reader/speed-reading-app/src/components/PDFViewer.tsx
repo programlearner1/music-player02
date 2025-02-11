@@ -1,26 +1,62 @@
-import { Worker, Viewer } from "@react-pdf-viewer/core";
-import { useSpeed } from "../context/speedcontext";
+import { useEffect, useRef } from "react";
+import { getDocument } from "pdfjs-dist";
+import "pdfjs-dist/build/pdf.worker.entry";
 
-// Define types for the props
 interface PDFViewerProps {
   file: string;
 }
 
 const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
-  const { speed, wordsPerFrame } = useSpeed();
+  const windowRef = useRef<Window | null>(null); // To track if the window has been opened
+  const hasOpenedWindow = useRef(false); // Flag to track if the window has already opened
 
-  // You can apply speed and wordsPerFrame here if needed
-  // For now, we'll just display them for example purposes
-  console.log("Speed:", speed);
-  console.log("Words per Frame:", wordsPerFrame);
+  useEffect(() => {
+    if (hasOpenedWindow.current) return; // If the window has already been opened, do not open it again
 
-  return (
-    <div className="w-full h-[500px] border">
-      <Worker workerUrl={`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`}>
-        <Viewer fileUrl={file} />
-      </Worker>
-    </div>
-  );
+    const extractText = async () => {
+      const loadingTask = getDocument(file);
+      const pdf = await loadingTask.promise;
+      let extractedText = "";
+
+      // Extract text from each page of the PDF
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        extractedText += textContent.items.map((item: any) => item.str).join(" ") + "\n\n";
+      }
+
+      // Open new window only once
+      const newWindow = window.open("", "_blank");
+      if (newWindow) {
+        windowRef.current = newWindow; // Store window reference
+        newWindow.document.write(`
+          <html>
+          <head>
+            <title>PDF Content</title>
+            <style>
+              body {
+                background-color: white;
+                color: rgb(201,197,197);
+                font-size: 18px;
+                line-height: 1.6;
+                padding: 20px;
+                white-space: pre-wrap;
+              }
+            </style>
+          </head>
+          <body>${extractedText}</body>
+          </html>
+        `);
+        newWindow.document.close();
+
+        hasOpenedWindow.current = true; // Mark window as opened
+      }
+    };
+
+    extractText();
+  }, [file]); // Only run when the file prop changes
+
+  return null; // No UI in the current window, as the content is being displayed in the new window
 };
 
 export default PDFViewer;
