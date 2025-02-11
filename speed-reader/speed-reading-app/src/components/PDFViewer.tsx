@@ -11,6 +11,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   const [numWords, setNumWords] = useState<number>(3); // Words per highlight
   const [words, setWords] = useState<string[]>([]); // Extracted words
   const [currentIndex, setCurrentIndex] = useState<number>(0); // Current reading position
+  const [isReading, setIsReading] = useState<boolean>(false); // Controls start/stop
+  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null); // Stores interval reference
 
   useEffect(() => {
     if (!file) return;
@@ -37,18 +39,26 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     extractText();
   }, [file]);
 
-  // Auto Highlighting Effect
-  useEffect(() => {
-    if (words.length === 0) return;
+  // Function to start reading
+  const startReading = () => {
+    if (intervalId) return; // Prevent multiple intervals
 
-    const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) =>
-        prevIndex + numWords >= words.length ? 0 : prevIndex + numWords
-      );
+    const id = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + numWords >= words.length ? 0 : prevIndex + numWords)); // Advance based on numWords
     }, speed);
 
-    return () => clearInterval(interval);
-  }, [words, speed, numWords]);
+    setIntervalId(id);
+    setIsReading(true);
+  };
+
+  // Function to stop reading
+  const stopReading = () => {
+    if (intervalId) {
+      clearInterval(intervalId);
+      setIntervalId(null);
+    }
+    setIsReading(false);
+  };
 
   return (
     <div
@@ -60,12 +70,12 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
         color: "rgb(201,197,197)",
       }}
     >
-      {/* Speed & Number of Words Dropdowns */}
+      {/* Controls (Speed, Words, Start/Stop) */}
       <div style={{ position: "absolute", top: "10px", left: "20px", zIndex: 10 }}>
         <label style={{ marginRight: "10px" }}>Speed:</label>
         <select onChange={(e) => setSpeed(Number(e.target.value))} value={speed}>
-          <option value={700}>Slow</option>
-          <option value={500}>Normal</option>
+          <option value={10000}>Slow</option>
+          <option value={600}>Normal</option>
           <option value={300}>Fast</option>
         </select>
 
@@ -75,6 +85,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
           <option value={5}>5 Words</option>
           <option value={7}>7 Words</option>
         </select>
+
+        {/* Start & Stop Buttons */}
+        <button onClick={startReading} disabled={isReading} style={{ marginLeft: "20px" }}>
+          Start
+        </button>
+        <button onClick={stopReading} disabled={!isReading} style={{ marginLeft: "10px" }}>
+          Stop
+        </button>
       </div>
 
       {/* Text Display with Highlighting */}

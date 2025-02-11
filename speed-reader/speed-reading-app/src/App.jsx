@@ -2,7 +2,7 @@ import { useState } from "react";
 import PDFViewer from "./components/PDFViewer";
 
 function App() {
-  const [pdfUrl, setPdfUrl] = useState("/sample.pdf"); // Ensure a valid path
+  const [pdfUrl, setPdfUrl] = useState("/sample.pdf"); // Use a default PDF URL
 
   return (
     <div className="h-screen bg-gray-800 text-white flex flex-col items-center justify-center">
@@ -10,17 +10,7 @@ function App() {
 
       <PDFViewer pdfUrl={pdfUrl} />
 
-      <input
-        type="file"
-        accept="application/pdf"
-        onChange={(e) => {
-          if (e.target.files && e.target.files[0]) {
-            const fileURL = URL.createObjectURL(e.target.files[0]);
-            setPdfUrl(fileURL);
-          }
-        }}
-        className="mt-4 p-2 bg-gray-700 text-white rounded"
-      />
+      {/* The file import button is removed here */}
     </div>
   );
 }
