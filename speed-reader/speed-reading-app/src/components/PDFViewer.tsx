@@ -7,7 +7,7 @@ interface PDFViewerProps {
 }
 
 const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
-  const [speed, setSpeed] = useState<number>(500); // Speed in milliseconds
+  const [speed, setSpeed] = useState<number>(1000); // Speed in milliseconds
   const [numWords, setNumWords] = useState<number>(3); // Words per highlight
   const [words, setWords] = useState<string[]>([]); // Extracted words
   const [currentIndex, setCurrentIndex] = useState<number>(0); // Current reading position
@@ -41,7 +41,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
 
   // Function to start reading
   const startReading = () => {
-    if (intervalId) return; // Prevent multiple intervals
+    if (intervalId) {
+      clearInterval(intervalId); // Clear any existing interval before starting a new one
+    }
 
     const id = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + numWords >= words.length ? 0 : prevIndex + numWords)); // Advance based on numWords
@@ -60,6 +62,13 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     setIsReading(false);
   };
 
+  // Restart the reading process when speed changes (if already reading)
+  useEffect(() => {
+    if (isReading) {
+      startReading();
+    }
+  }, [speed, numWords]); // Restart when speed or number of words changes
+
   return (
     <div
       style={{
@@ -74,15 +83,22 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
       <div style={{ position: "absolute", top: "10px", left: "20px", zIndex: 10 }}>
         <label style={{ marginRight: "10px" }}>Speed:</label>
         <select onChange={(e) => setSpeed(Number(e.target.value))} value={speed}>
-          <option value={10000}>Slow</option>
-          <option value={600}>Normal</option>
-          <option value={300}>Fast</option>
+          <option value={2000}>0.25</option>
+          <option value={1500}>0.5</option>
+          <option value={1100}>0.75</option>
+          <option value={1000}>Normal</option>
+          <option value={700}>1.25</option>
+          <option value={500}>1.5</option>
+          <option value={300}>1.75</option>
+          <option value={100}>2</option>
         </select>
 
         <label style={{ marginLeft: "20px", marginRight: "10px" }}>Words:</label>
         <select onChange={(e) => setNumWords(Number(e.target.value))} value={numWords}>
           <option value={3}>3 Words</option>
+          <option value={4}>4 Words</option>
           <option value={5}>5 Words</option>
+          <option value={6}>6 Words</option>
           <option value={7}>7 Words</option>
         </select>
 

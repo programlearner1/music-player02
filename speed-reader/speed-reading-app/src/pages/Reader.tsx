@@ -1,11 +1,12 @@
 import { useState } from "react";
 import PDFViewer from "../components/PDFViewer";
-import SpeedControls from "../components/SpeedControls";
 
-const Reader = () => {
+interface ReaderProps {
+  isResultPage?: boolean;  // Optional prop
+}
+
+const Reader: React.FC<ReaderProps> = ({ isResultPage = false }) => {
   const [file, setFile] = useState<string>("");
-  const [speed, setSpeed] = useState<number>(1);  // Adding speed state
-  const [wordsPerFrame, setWordsPerFrame] = useState<number>(5);  // Adding wordsPerFrame state
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = e.target.files?.[0];
@@ -17,14 +18,19 @@ const Reader = () => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Reading Mode</h2>
-      <input type="file" accept="application/pdf" onChange={handleFileUpload} />
+
+      {/* Conditionally render file input based on isResultPage and if a file has been uploaded */}
+      {!file && !isResultPage && (
+        <input
+          type="file"
+          accept="application/pdf"
+          onChange={handleFileUpload}
+          className="mb-4 p-2 bg-gray-700 text-white rounded"
+        />
+      )}
+
+      {/* Display PDF viewer if a file is selected */}
       {file && <PDFViewer file={file} />}
-      <SpeedControls 
-        speed={speed} 
-        setSpeed={setSpeed} 
-        wordsPerFrame={wordsPerFrame} 
-        setWordsPerFrame={setWordsPerFrame} 
-      />
     </div>
   );
 };
