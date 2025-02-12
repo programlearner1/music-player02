@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getDocument } from "pdfjs-dist";
 import "pdfjs-dist/build/pdf.worker.entry";
 
@@ -13,6 +13,35 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   const [currentIndex, setCurrentIndex] = useState<number>(0); // Current reading position
   const [isReading, setIsReading] = useState<boolean>(false); // Controls start/stop
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null); // Stores interval reference
+
+  // Reference to the text container for scrolling
+  const textContainerRef = useRef<HTMLDivElement | null>(null);
+  const wordElementsRef = useRef<(HTMLSpanElement | null)[]>([]); // To store references to word elements
+
+  // Dropdown styles
+  const dropdownStyles = {
+    padding: "5px 10px",
+    backgroundColor: "#333",
+    color: "#fff",
+    borderRadius: "5px",
+    border: "none",
+  };
+
+  // Button styles
+  const buttonStyles = {
+    padding: "8px 16px",
+    backgroundColor: "#007bff",
+    color: "#fff",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  };
+
+  // Label styles for Speed and Words (Bold and Black)
+  const labelStyles = {
+    fontWeight: "bold" as const,
+    color: "black" as const,
+  };
 
   useEffect(() => {
     if (!file) return;
@@ -69,6 +98,55 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     }
   }, [speed, numWords]); // Restart when speed or number of words changes
 
+  // Smooth scroll the page as the reader moves and center the current word
+  const smoothScrollToWord = () => {
+    if (textContainerRef.current && wordElementsRef.current) {
+      const container = textContainerRef.current;
+      const currentWordElement = wordElementsRef.current[currentIndex];
+
+      if (currentWordElement) {
+        const rect = currentWordElement.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const wordCenterY = rect.top + rect.height / 2;
+        const containerCenterY = containerRect.top + containerRect.height / 2;
+
+        // Calculate the distance to scroll
+        const distanceToScroll = wordCenterY - containerCenterY;
+
+        // Easing function for smooth scrolling
+        const easeInOutQuad = (t: number) => {
+          if (t < 0.5) return 2 * t * t;
+          return -1 + (4 - 2 * t) * t;
+        };
+
+        const start = container.scrollTop;
+        const duration = 300; // Scroll duration in milliseconds
+        let startTime: number | null = null;
+
+        const scroll = (timestamp: number) => {
+          if (!startTime) startTime = timestamp;
+          const timeElapsed = timestamp - startTime;
+          const progress = Math.min(timeElapsed / duration, 1);
+          const easing = easeInOutQuad(progress);
+
+          container.scrollTop = start + easing * distanceToScroll;
+
+          if (progress < 1) {
+            requestAnimationFrame(scroll);
+          }
+        };
+
+        requestAnimationFrame(scroll);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (currentIndex < words.length) {
+      smoothScrollToWord();
+    }
+  }, [currentIndex, words.length]);
+
   return (
     <div
       style={{
@@ -80,39 +158,63 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
       }}
     >
       {/* Controls (Speed, Words, Start/Stop) */}
-      <div style={{ position: "absolute", top: "10px", left: "20px", zIndex: 10 }}>
-        <label style={{ marginRight: "10px" }}>Speed:</label>
-        <select onChange={(e) => setSpeed(Number(e.target.value))} value={speed}>
-          <option value={2000}>0.25</option>
-          <option value={1500}>0.5</option>
-          <option value={1100}>0.75</option>
-          <option value={1000}>Normal</option>
-          <option value={700}>1.25</option>
-          <option value={500}>1.5</option>
-          <option value={300}>1.75</option>
-          <option value={100}>2</option>
-        </select>
+      <div
+        style={{
+          position: "absolute",
+          top: "10px",
+          left: "20px",
+          zIndex: 10,
+          display: "flex", // Flexbox to align buttons in a row
+          flexDirection: "row", // Ensure the buttons are aligned horizontally
+          gap: "10px", // Adds space between the buttons
+        }}
+      >
+        <div>
+          <label style={{ ...labelStyles, marginRight: "10px" }}>Speed:</label>
+          <select onChange={(e) => setSpeed(Number(e.target.value))} value={speed} style={dropdownStyles}>
+            <option value={2000}>0.25</option>
+            <option value={1500}>0.5</option>
+            <option value={1100}>0.75</option>
+            <option value={1000}>Normal</option>
+            <option value={700}>1.25</option>
+            <option value={500}>1.5</option>
+            <option value={300}>1.75</option>
+            <option value={100}>2</option>
+          </select>
+        </div>
 
-        <label style={{ marginLeft: "20px", marginRight: "10px" }}>Words:</label>
-        <select onChange={(e) => setNumWords(Number(e.target.value))} value={numWords}>
-          <option value={3}>3 Words</option>
-          <option value={4}>4 Words</option>
-          <option value={5}>5 Words</option>
-          <option value={6}>6 Words</option>
-          <option value={7}>7 Words</option>
-        </select>
+        <div>
+          <label style={{ ...labelStyles, marginRight: "10px" }}>Words:</label>
+          <select onChange={(e) => setNumWords(Number(e.target.value))} value={numWords} style={dropdownStyles}>
+            <option value={3}>3 Words</option>
+            <option value={4}>4 Words</option>
+            <option value={5}>5 Words</option>
+            <option value={6}>6 Words</option>
+            <option value={7}>7 Words</option>
+          </select>
+        </div>
 
         {/* Start & Stop Buttons */}
-        <button onClick={startReading} disabled={isReading} style={{ marginLeft: "20px" }}>
-          Start
-        </button>
-        <button onClick={stopReading} disabled={!isReading} style={{ marginLeft: "10px" }}>
-          Stop
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button onClick={startReading} disabled={isReading} style={buttonStyles}>
+            Start
+          </button>
+          <button onClick={stopReading} disabled={!isReading} style={buttonStyles}>
+            Stop
+          </button>
+        </div>
       </div>
 
       {/* Text Display with Highlighting */}
-      <div style={{ width: "100%", height: "100%", overflow: "auto", marginTop: "40px" }}>
+      <div
+        ref={textContainerRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          overflow: "auto",
+          marginTop: "40px",
+        }}
+      >
         <p
           style={{
             fontSize: "18px",
@@ -123,6 +225,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
         >
           {words.map((word, index) => (
             <span
+              ref={(el) => (wordElementsRef.current[index] = el)} // Store references to each word
               key={index}
               style={{
                 color: index >= currentIndex && index < currentIndex + numWords ? "black" : "rgb(201,197,197)",
