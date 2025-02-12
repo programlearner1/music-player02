@@ -22,6 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-[submodule "speed-reader/Speed_reading"]
-path = speed-reader/Speed_reading
-url = https://github.com/programlearner1/Speed_reading.git
+[submodule "Speed_reading"]
+    path = Speed_reading
+    url = https://github.com/programlearner1/Speed_reading.git
+
