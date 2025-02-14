@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Music Player</title>
+  <link href="https://fonts.googleapis.com/css2?family=Circular+Std:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Circular Std', sans-serif;
+      background-color: #121212;
+      color: white;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #player-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+    }
+    #thumbnail {
+      width: 300px;
+      height: 200px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+    }
+    #playlist {
+      list-style-type: none;
+      padding: 0;
+      margin-top: 20px;
+    }
+    #playlist li {
+      padding: 10px;
+      border-bottom: 1px solid #333;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    #playlist li:hover {
+      background-color: #1DB954;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      background-color: #1DB954;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #1ed760;
+    }
+    input {
+      padding: 10px;
+      width: 300px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      border: none;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>YouTube Music Player</h1>
+
+  <!-- User inputs playlist link -->
+  <input type="text" id="playlist-input" placeholder="Paste YouTube playlist link here">
+  <button id="load-playlist">Load Playlist</button>
+
+  <div id="player-container">
+    <img id="thumbnail" src="" alt="Song Thumbnail">
+    <div class="controls">
+      <button id="play-button">Play</button>
+      <button id="pause-button">Pause</button>
+    </div>
+  </div>
+  
+  <ul id="playlist"></ul>
+
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    let player;
+    let playlist = [];
+    const apiKey = 'AIzaSyB8Phtr6Jlm9wRm-Ja51QhNZiA1zM4541o'; // Replace with your YouTube API key
+    const thumbnail = document.getElementById('thumbnail');
+    const playlistElement = document.getElementById('playlist');
+    const playButton = document.getElementById('play-button');
+    const pauseButton = document.getElementById('pause-button');
+
+    // Load YouTube IFrame API
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player-container', {
+        height: '0', // Hide the player
+        width: '0',
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+
+    // Extract playlist ID from the pasted YouTube URL
+    function extractPlaylistId(url) {
+      const match = url.match(/[?&]list=([^&]+)/);
+      return match ? match[1] : null;
+    }
+
+    // Fetch YouTube playlist dynamically
+    async function fetchPlaylist(playlistId) {
+      const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!data.items) {
+        alert("Failed to fetch playlist. Check the link or API key.");
+        return;
+      }
+
+      playlist = data.items.map(item => ({
+        id: item.snippet.resourceId.videoId,
+        title: item.snippet.title,
+        thumbnail: item.snippet.thumbnails.medium.url
+      }));
+
+      renderPlaylist();
+    }
+
+    // Render playlist
+    function renderPlaylist() {
+      playlistElement.innerHTML = '';
+      playlist.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.innerText = item.title;
+        li.addEventListener('click', () => {
+          playSong(index);
+        });
+        playlistElement.appendChild(li);
+      });
+    }
+
+    // Play a song from the playlist
+    function playSong(index) {
+      const videoId = playlist[index].id;
+      player.loadVideoById(videoId);
+      thumbnail.src = playlist[index].thumbnail;
+    }
+
+    // Handle play button
+    playButton.addEventListener('click', () => {
+      player.playVideo();
+    });
+
+    // Handle pause button
+    pauseButton.addEventListener('click', () => {
+      player.pauseVideo();
+    });
+
+    // Player ready event
+    function onPlayerReady(event) {
+      console.log('YouTube player is ready');
+    }
+
+    // Player state change event
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        console.log('Song is playing');
+      } else if (event.data === YT.PlayerState.PAUSED) {
+        console.log('Song is paused');
+      }
+    }
+
+    // Handle playlist input
+    document.getElementById('load-playlist').addEventListener('click', () => {
+      const playlistInput = document.getElementById('playlist-input').value;
+      const playlistId = extractPlaylistId(playlistInput);
+
+      if (playlistId) {
+        fetchPlaylist(playlistId);
+      } else {
+        alert("Invalid YouTube playlist link!");
+      }
+    });
+
+  </script>
+</body>
+</html>
