@@ -1,0 +1,8 @@
+# Ignore system files
+$RECYCLE.BIN/
+System Volume Information/
+
+# You can also ignore specific file types, like node_modules or logs:
+node_modules/
+*.log
+.env

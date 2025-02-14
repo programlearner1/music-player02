@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Sync App</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* General Styles */
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #121212; /* Spotify dark background */
+  color: #FFFFFF;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Prevent scrollbars */
+}
+
+/* Background Image with Blur Effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: inherit; /* Inherit the background image */
+  background-size: cover;
+  background-position: center;
+  filter: blur(10px); /* Strong blur effect */
+  z-index: -1; /* Place behind other content */
+}
+
+/* Main Container */
+.container {
+  position: relative;
+  max-width: 600px;
+  margin: 50px auto;
+  padding: 20px;
+  background-color: rgba(18, 18, 18, 0.9); /* Slightly transparent dark background */
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px); /* Frosted glass effect */
+}
+
+/* Header Section */
+header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+header h1 {
+  font-size: 2.5em;
+  margin: 0;
+  color: #1DB954; /* Spotify green */
+  font-weight: bold;
+}
+
+/* Player Section */
+#player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+#song-image {
+  width: 100%;
+  max-width: 300px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.song-info {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.song-info h2 {
+  margin: 0;
+  font-size: 1.8em;
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+.song-info h3 {
+  margin: 0;
+  font-size: 1.2em;
+  color: #B3B3B3; /* Light gray for artist name */
+}
+
+/* Audio Player */
+audio {
+  width: 100%;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.1); /* Light background for audio player */
+}
+
+/* Control Buttons */
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.control-btn {
+  background-color: #1DB954; /* Spotify green */
+  border: none;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+  font-size: 1em;
+  font-weight: bold;
+}
+
+.control-btn:hover {
+  background-color: #1AA34A; /* Darker green on hover */
+  transform: scale(1.05); /* Slight zoom effect */
+}
+
+.control-btn:active {
+  transform: scale(0.95); /* Click effect */
+}
+
+/* Room Join Section */
+#room {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+#room input {
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  width: 80%;
+  max-width: 300px;
+  font-size: 1em;
+  background-color: rgba(255, 255, 255, 0.1); /* Light background for input */
+  color: #FFFFFF;
+}
+
+#room input::placeholder {
+  color: #B3B3B3; /* Light gray placeholder text */
+}
+
+#join-room-btn {
+  background-color: #1DB954; /* Spotify green */
+  border: none;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+  font-size: 1em;
+  font-weight: bold;
+}
+
+#join-room-btn:hover {
+  background-color: #1AA34A; /* Darker green on hover */
+  transform: scale(1.05); /* Slight zoom effect */
+}
+
+#join-room-btn:active {
+  transform: scale(0.95); /* Click effect */
+}
+
+/* Playlist Section */
+#playlist {
+  margin-top: 20px;
+  text-align: center;
+}
+
+#playlist h3 {
+  font-size: 1.5em;
+  margin-bottom: 10px;
+  color: #1DB954; /* Spotify green */
+  font-weight: bold;
+}
+
+#playlist ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#playlist li {
+  padding: 10px;
+  margin: 5px 0;
+  background-color: rgba(255, 255, 255, 0.1); /* Light background for playlist items */
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+#playlist li:hover {
+  background-color: rgba(255, 255, 255, 0.2); /* Slightly lighter on hover */
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .container {
+    margin: 20px;
+    padding: 15px;
+  }
+
+  header h1 {
+    font-size: 2em;
+  }
+
+  .control-btn {
+    padding: 10px 15px;
+    font-size: 0.9em;
+  }
+
+  #room input {
+    width: 90%;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="container">  <!-- Wrap everything inside this -->
+  <h1>Music Sync App</h1>
+  <div id="room-controls">
+    <input type="text" id="room-id" placeholder="Enter Room ID">
+    <input type="text" id="username" placeholder="Enter Your Name">
+    <button id="join-room-btn">Join Room</button>
+  </div>
+  <input type="text" id="youtube-playlist-url" placeholder="Paste YouTube playlist link">
+  <button id="load-playlist-btn">Load Playlist</button>
+
+  <div id="player"></div>  <!-- YouTube Player Loads Here -->
+
+  <div id="playback-controls" style="display: none;">
+    <button id="play-btn">Play</button>
+    <button id="pause-btn">Pause</button>
+    <button id="next-btn">Next</button>
+    <button id="previous-btn">Previous</button>
+  </div>
+  <div id="playlist"></div>
+  <audio id="audio-player" controls></audio>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+</body>
+</html>
