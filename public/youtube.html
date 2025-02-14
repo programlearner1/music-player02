@@ -17,23 +17,19 @@
       align-items: center;
     }
     #player-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       margin-top: 20px;
-    }
-    #thumbnail {
-      width: 300px;
-      height: 200px;
-      border-radius: 10px;
-      margin-bottom: 10px;
+      width: 640px;
+      height: 360px;
     }
     #playlist {
       list-style-type: none;
       padding: 0;
       margin-top: 20px;
+      width: 300px;
     }
     #playlist li {
+      display: flex;
+      align-items: center;
       padding: 10px;
       border-bottom: 1px solid #333;
       cursor: pointer;
@@ -41,6 +37,12 @@
     }
     #playlist li:hover {
       background-color: #1DB954;
+    }
+    #playlist img {
+      width: 50px;
+      height: 50px;
+      margin-right: 10px;
+      border-radius: 5px;
     }
     .controls {
       display: flex;
@@ -67,8 +69,8 @@
       border: none;
       outline: none;
     }
-    #load-playlist{
-        padding: 10px 15px;
+    #load-playlist {
+      padding: 10px 15px;
       border: none;
       border-radius: 5px;
       background-color: #1DB954;
@@ -76,7 +78,7 @@
       cursor: pointer;
       transition: background-color 0.3s;
     }
-    load-playlist:hover {
+    #load-playlist:hover {
       background-color: #1ed760;
     }
   </style>
@@ -88,12 +90,11 @@
   <input type="text" id="playlist-input" placeholder="Paste YouTube playlist link here">
   <button id="load-playlist">Load Playlist</button>
 
-  <div id="player-container">
-    <img id="thumbnail" src="" alt="Song Thumbnail">
-    <div class="controls">
-      <button id="play-button">Play</button>
-      <button id="pause-button">Pause</button>
-    </div>
+  <div id="player-container"></div> <!-- YouTube player will load here -->
+
+  <div class="controls">
+    <button id="play-button">Play</button>
+    <button id="pause-button">Pause</button>
   </div>
   
   <ul id="playlist"></ul>
@@ -104,16 +105,15 @@
     let player;
     let playlist = [];
     const apiKey = 'AIzaSyB8Phtr6Jlm9wRm-Ja51QhNZiA1zM4541o'; // Replace with your YouTube API key
-    const thumbnail = document.getElementById('thumbnail');
     const playlistElement = document.getElementById('playlist');
     const playButton = document.getElementById('play-button');
     const pauseButton = document.getElementById('pause-button');
 
-    // Load YouTube IFrame API
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player-container', {
-        height: '0', // Hide the player
-        width: '0',
+        height: '360',
+        width: '640',
+        videoId: '', // Initially empty
         events: {
           'onReady': onPlayerReady,
           'onStateChange': onPlayerStateChange
@@ -152,29 +152,34 @@
       playlistElement.innerHTML = '';
       playlist.forEach((item, index) => {
         const li = document.createElement('li');
-        li.innerText = item.title;
+        const img = document.createElement('img');
+        img.src = item.thumbnail;
+        li.appendChild(img);
+        li.appendChild(document.createTextNode(item.title));
+
         li.addEventListener('click', () => {
           playSong(index);
         });
+
         playlistElement.appendChild(li);
       });
     }
 
     // Play a song from the playlist
     function playSong(index) {
-      const videoId = playlist[index].id;
-      player.loadVideoById(videoId);
-      thumbnail.src = playlist[index].thumbnail;
+      if (player) {
+        player.loadVideoById(playlist[index].id);
+      }
     }
 
     // Handle play button
     playButton.addEventListener('click', () => {
-      player.playVideo();
+      if (player) player.playVideo();
     });
 
     // Handle pause button
     pauseButton.addEventListener('click', () => {
-      player.pauseVideo();
+      if (player) player.pauseVideo();
     });
 
     // Player ready event
