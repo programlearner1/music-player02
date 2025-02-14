@@ -102,24 +102,29 @@
   <!-- YouTube IFrame API -->
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    let player;
+    let player; // Declare player globally
+    
+    function onYouTubeIframeAPIReady() {
+      console.log("YouTube API Ready");
+
+      setTimeout(() => { // Wait for API to fully load
+        player = new YT.Player('player-container', {
+          height: '360',
+          width: '640',
+          videoId: '',
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+          }
+        });
+      }, 500); // Delay initialization to prevent premature calls
+    }
+
     let playlist = [];
     const apiKey = 'AIzaSyB8Phtr6Jlm9wRm-Ja51QhNZiA1zM4541o'; // Replace with your YouTube API key
     const playlistElement = document.getElementById('playlist');
     const playButton = document.getElementById('play-button');
     const pauseButton = document.getElementById('pause-button');
-
-    function onYouTubeIframeAPIReady() {
-      player = new YT.Player('player-container', {
-        height: '360',
-        width: '640',
-        videoId: '', // Initially empty
-        events: {
-          'onReady': onPlayerReady,
-          'onStateChange': onPlayerStateChange
-        }
-      });
-    }
 
     // Extract playlist ID from the pasted YouTube URL
     function extractPlaylistId(url) {
@@ -167,19 +172,29 @@
 
     // Play a song from the playlist
     function playSong(index) {
-      if (player) {
+      if (player && player.loadVideoById) {
         player.loadVideoById(playlist[index].id);
+      } else {
+        console.error("Player is not initialized yet.");
       }
     }
 
     // Handle play button
     playButton.addEventListener('click', () => {
-      if (player) player.playVideo();
+      if (player && player.playVideo) {
+        player.playVideo();
+      } else {
+        console.error("Player is not initialized yet.");
+      }
     });
 
     // Handle pause button
     pauseButton.addEventListener('click', () => {
-      if (player) player.pauseVideo();
+      if (player && player.pauseVideo) {
+        player.pauseVideo();
+      } else {
+        console.error("Player is not initialized yet.");
+      }
     });
 
     // Player ready event
