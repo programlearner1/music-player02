@@ -1,4 +1,4 @@
-const socket = io("http://localhost:3000"); // Replace with your server URL
+const socket = io(window.location.origin);
 const audioPlayer = document.getElementById("audio-player");
 const roomIdInput = document.getElementById("room-id");
 const usernameInput = document.getElementById("username");

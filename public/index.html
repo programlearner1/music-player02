@@ -5,254 +5,274 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Music Sync App</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> <!-- Font Awesome for icons -->
   <style>
     /* General Styles */
-body {
-  font-family: 'Arial', sans-serif;
-  background-color: #121212; /* Spotify dark background */
-  color: #FFFFFF;
-  margin: 0;
-  padding: 0;
-  overflow: hidden; /* Prevent scrollbars */
-}
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab); /* Gradient background */
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite; /* Animated gradient */
+      color: #FFFFFF;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden; /* Prevent scrollbars */
+    }
 
-/* Background Image with Blur Effect */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: inherit; /* Inherit the background image */
-  background-size: cover;
-  background-position: center;
-  filter: blur(10px); /* Strong blur effect */
-  z-index: -1; /* Place behind other content */
-}
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
 
-/* Main Container */
-.container {
-  position: relative;
-  max-width: 600px;
-  margin: 50px auto;
-  padding: 20px;
-  background-color: rgba(18, 18, 18, 0.9); /* Slightly transparent dark background */
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(5px); /* Frosted glass effect */
-}
+    /* Main Container */
+    .container {
+      position: relative;
+      max-width: 600px;
+      width: 100%;
+      padding: 30px;
+      background: rgba(255, 255, 255, 0.1); /* Semi-transparent white */
+      border-radius: 20px;
+      backdrop-filter: blur(10px); /* Frosted glass effect */
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
+      text-align: center;
+      animation: fadeIn 1s ease-in-out; /* Fade-in animation */
+    }
 
-/* Header Section */
-header {
-  text-align: center;
-  margin-bottom: 20px;
-}
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
-header h1 {
-  font-size: 2.5em;
-  margin: 0;
-  color: #1DB954; /* Spotify green */
-  font-weight: bold;
-}
+    /* Header Section */
+    header h1 {
+      font-size: 2.5em;
+      margin: 0 0 20px;
+      color: #FFFFFF;
+      font-weight: bold;
+      text-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      animation: glow 2s infinite alternate; /* Glow animation */
+    }
 
-/* Player Section */
-#player {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 20px;
-}
+    @keyframes glow {
+      from { text-shadow: 0 0 10px rgba(255, 255, 255, 0.7), 0 0 20px rgba(255, 255, 255, 0.7); }
+      to { text-shadow: 0 0 20px rgba(255, 255, 255, 0.9), 0 0 30px rgba(255, 255, 255, 0.9); }
+    }
 
-#song-image {
-  width: 100%;
-  max-width: 300px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
+    /* Room Controls */
+    #room-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
 
-.song-info {
-  text-align: center;
-  margin-bottom: 20px;
-}
+    #room-controls input {
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.2); /* Semi-transparent input */
+      color: #FFFFFF;
+      font-size: 1em;
+      outline: none;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
 
-.song-info h2 {
-  margin: 0;
-  font-size: 1.8em;
-  color: #FFFFFF;
-  font-weight: bold;
-}
+    #room-controls input:focus {
+      background: rgba(255, 255, 255, 0.3);
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
 
-.song-info h3 {
-  margin: 0;
-  font-size: 1.2em;
-  color: #B3B3B3; /* Light gray for artist name */
-}
+    #room-controls input::placeholder {
+      color: rgba(255, 255, 255, 0.7); /* Light placeholder */
+    }
 
-/* Audio Player */
-audio {
-  width: 100%;
-  margin-bottom: 20px;
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.1); /* Light background for audio player */
-}
+    #join-room-btn {
+      background: linear-gradient(135deg, #1DB954, #1AA34A); /* Spotify green gradient */
+      border: none;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      font-weight: bold;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
 
-/* Control Buttons */
-.controls {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  margin-bottom: 20px;
-}
+    #join-room-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(29, 185, 84, 0.4); /* Glow effect */
+    }
 
-.control-btn {
-  background-color: #1DB954; /* Spotify green */
-  border: none;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 25px;
-  cursor: pointer;
-  transition: background-color 0.3s, transform 0.2s;
-  font-size: 1em;
-  font-weight: bold;
-}
+    #join-room-btn:active {
+      transform: translateY(0);
+    }
 
-.control-btn:hover {
-  background-color: #1AA34A; /* Darker green on hover */
-  transform: scale(1.05); /* Slight zoom effect */
-}
+    /* YouTube Playlist Input */
+    #youtube-playlist-url {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      color: #FFFFFF;
+      font-size: 1em;
+      margin-bottom: 20px;
+      outline: none;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
 
-.control-btn:active {
-  transform: scale(0.95); /* Click effect */
-}
+    #youtube-playlist-url:focus {
+      background: rgba(255, 255, 255, 0.3);
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
 
-/* Room Join Section */
-#room {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  margin-top: 20px;
-}
+    #youtube-playlist-url::placeholder {
+      color: rgba(255, 255, 255, 0.7);
+    }
 
-#room input {
-  padding: 10px;
-  border: none;
-  border-radius: 4px;
-  width: 80%;
-  max-width: 300px;
-  font-size: 1em;
-  background-color: rgba(255, 255, 255, 0.1); /* Light background for input */
-  color: #FFFFFF;
-}
+    #load-playlist-btn {
+      background: linear-gradient(135deg, #FF416C, #FF4B2B); /* Red gradient */
+      border: none;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      font-weight: bold;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
 
-#room input::placeholder {
-  color: #B3B3B3; /* Light gray placeholder text */
-}
+    #load-playlist-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(255, 65, 108, 0.4); /* Glow effect */
+    }
 
-#join-room-btn {
-  background-color: #1DB954; /* Spotify green */
-  border: none;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 25px;
-  cursor: pointer;
-  transition: background-color 0.3s, transform 0.2s;
-  font-size: 1em;
-  font-weight: bold;
-}
+    #load-playlist-btn:active {
+      transform: translateY(0);
+    }
 
-#join-room-btn:hover {
-  background-color: #1AA34A; /* Darker green on hover */
-  transform: scale(1.05); /* Slight zoom effect */
-}
+    /* Playback Controls */
+    #playback-controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
 
-#join-room-btn:active {
-  transform: scale(0.95); /* Click effect */
-}
+    #playback-controls button {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      font-weight: bold;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
 
-/* Playlist Section */
-#playlist {
-  margin-top: 20px;
-  text-align: center;
-}
+    #playback-controls button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2); /* Glow effect */
+    }
 
-#playlist h3 {
-  font-size: 1.5em;
-  margin-bottom: 10px;
-  color: #1DB954; /* Spotify green */
-  font-weight: bold;
-}
+    #playback-controls button:active {
+      transform: translateY(0);
+    }
 
-#playlist ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
+    /* Playlist Section */
+    #playlist {
+      margin-top: 20px;
+      text-align: left;
+    }
 
-#playlist li {
-  padding: 10px;
-  margin: 5px 0;
-  background-color: rgba(255, 255, 255, 0.1); /* Light background for playlist items */
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
+    #playlist h3 {
+      font-size: 1.5em;
+      margin-bottom: 10px;
+      color: #FFFFFF;
+      font-weight: bold;
+    }
 
-#playlist li:hover {
-  background-color: rgba(255, 255, 255, 0.2); /* Slightly lighter on hover */
-}
+    #playlist ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
 
-/* Responsive Design */
-@media (max-width: 600px) {
-  .container {
-    margin: 20px;
-    padding: 15px;
-  }
+    #playlist li {
+      padding: 12px;
+      margin: 8px 0;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
 
-  header h1 {
-    font-size: 2em;
-  }
+    #playlist li:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateX(5px);
+    }
 
-  .control-btn {
-    padding: 10px 15px;
-    font-size: 0.9em;
-  }
+    /* Audio Player */
+    #audio-player {
+      width: 100%;
+      margin-top: 20px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+    }
 
-  #room input {
-    width: 90%;
-  }
-}
+    /* Responsive Design */
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+
+      header h1 {
+        font-size: 2em;
+      }
+
+      #room-controls input,
+      #youtube-playlist-url,
+      #playback-controls button,
+      #playlist li {
+        padding: 10px;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container">  <!-- Wrap everything inside this -->
-  <h1>Music Sync App</h1>
-  <div id="room-controls">
-    <input type="text" id="room-id" placeholder="Enter Room ID">
-    <input type="text" id="username" placeholder="Enter Your Name">
-    <button id="join-room-btn">Join Room</button>
+  <div class="container">
+    <header>
+      <h1>Music Sync App</h1>
+    </header>
+    <div id="room-controls">
+      <input type="text" id="room-id" placeholder="Enter Room ID">
+      <input type="text" id="username" placeholder="Enter Your Name">
+      <button id="join-room-btn">Join Room</button>
+    </div>
+    <input type="text" id="youtube-playlist-url" placeholder="Paste YouTube playlist link">
+    <button id="load-playlist-btn">Load Playlist</button>
+    <div id="player"></div>  <!-- YouTube Player Loads Here -->
+    <div id="playback-controls" style="display: none;">
+      <button id="play-btn"><i class="fas fa-play"></i></button>
+      <button id="pause-btn"><i class="fas fa-pause"></i></button>
+      <button id="next-btn"><i class="fas fa-forward"></i></button>
+      <button id="previous-btn"><i class="fas fa-backward"></i></button>
+    </div>
+    <div id="playlist"></div>
+    <audio id="audio-player" controls></audio>
   </div>
-  <input type="text" id="youtube-playlist-url" placeholder="Paste YouTube playlist link">
-  <button id="load-playlist-btn">Load Playlist</button>
-
-  <div id="player"></div>  <!-- YouTube Player Loads Here -->
-
-  <div id="playback-controls" style="display: none;">
-    <button id="play-btn">Play</button>
-    <button id="pause-btn">Pause</button>
-    <button id="next-btn">Next</button>
-    <button id="previous-btn">Previous</button>
-  </div>
-  <div id="playlist"></div>
-  <audio id="audio-player" controls></audio>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="client.js"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
   <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-
-
 </body>
 </html>
