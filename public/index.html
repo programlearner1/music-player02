@@ -12,7 +12,7 @@
     body {
       font-family: 'Arial', sans-serif;
       background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab); /* Gradient background */
-      background-size: 400% 400%;
+      background-size: 400% 400%; /* Required for gradient animation */
       animation: gradientBG 15s ease infinite; /* Animated gradient */
       color: #FFFFFF;
       margin: 0;
@@ -24,6 +24,7 @@
       overflow: hidden; /* Prevent scrollbars */
     }
 
+    /* Gradient Animation */
     @keyframes gradientBG {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
