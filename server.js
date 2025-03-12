@@ -1,32 +1,55 @@
 const express = require("express");
 const http = require("http");
-const { Server } = require("socket.io");
+const socketIo = require("socket.io");
 const cors = require("cors");
 const path = require("path");
 const axios = require("axios");
 
-const YOUTUBE_API_KEY = "AIzaSyB8Phtr6Jlm9wRm-Ja51QhNZiA1zM4541o"; // Replace with your YouTube API key
-
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server);
+
+const PORT = process.env.PORT || 3000;
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+
 app.use(cors());
-app.use(express.static(path.join(__dirname, "public")));
-app.use(express.static("public")); // Serve files from /public
+app.use(express.static(path.join(__dirname)));
 
 // Serve favicon
 app.get('/favicon.ico', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
+    res.sendFile(path.join(__dirname, 'favicon.ico'));
 });
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+// Playlist API endpoint
+app.get('/api/playlist/:playlistId', async (req, res) => {
+    try {
+        const playlistId = req.params.playlistId;
+        const response = await axios.get(`https://www.googleapis.com/youtube/v3/playlistItems`, {
+            params: {
+                part: 'snippet',
+                maxResults: 50,
+                playlistId: playlistId,
+                key: YOUTUBE_API_KEY
+            }
+        });
+
+        const videos = response.data.items.map(item => ({
+            videoId: item.snippet.resourceId.videoId,
+            title: item.snippet.title,
+            channelTitle: item.snippet.channelTitle,
+            thumbnail: item.snippet.thumbnails.default.url
+        }));
+
+        res.json(videos);
+    } catch (error) {
+        console.error('Error fetching playlist:', error);
+        res.status(500).json({ error: 'Failed to fetch playlist' });
+    }
 });
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
+// Fallback route for SPA
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Store room states
@@ -41,34 +64,48 @@ let songs = [
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
-  socket.on("join-room", ({ roomId, username }) => {
-    socket.join(roomId);
-    
-    // Initialize room if it doesn't exist
-    if (!rooms.has(roomId)) {
-      rooms.set(roomId, {
-        users: [],
-        playlist: [],
-        currentIndex: 0,
-        isPlaying: false
-      });
+  let currentRoom = null;
+  let username = null;
+
+  socket.on("join-room", ({ room, username: user }) => {
+    currentRoom = room;
+    username = user;
+
+    socket.join(room);
+    if (!rooms.has(room)) {
+      rooms.set(room, new Set());
     }
-    
-    const room = rooms.get(roomId);
-    room.users.push({ id: socket.id, username });
-    
-    // Send current room state to new user
-    socket.emit("sync-playlist-from-room", {
-      videos: room.playlist,
-      currentIndex: room.currentIndex,
-      isPlaying: room.isPlaying
+    rooms.get(room).add(username);
+
+    io.to(room).emit("user-joined", {
+      users: Array.from(rooms.get(room))
     });
-    
-    // Notify others about new user
-    io.to(roomId).emit("user-joined", {
-      username,
-      users: room.users
+
+    // Request sync state from an existing user
+    socket.to(room).emit("request-sync", { room });
+  });
+
+  socket.on("playback-state", ({ isPlaying, room }) => {
+    socket.to(room).emit("playback-state", { isPlaying });
+  });
+
+  socket.on("song-change", ({ room, videoId, index, timestamp }) => {
+    socket.to(room).emit("song-change", { videoId, index, timestamp });
+  });
+
+  socket.on("sync-update", ({ room, currentTime, timestamp, videoId, index }) => {
+    const latency = Date.now() - timestamp;
+    socket.to(room).emit("sync-playback", {
+      currentTime,
+      timestamp,
+      latency,
+      videoId,
+      index
     });
+  });
+
+  socket.on("request-sync", ({ room }) => {
+    socket.to(room).emit("request-sync", { room });
   });
 
   socket.on("sync-playlist-to-room", (data) => {
@@ -173,25 +210,22 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    // Remove user from all rooms they were in
-    rooms.forEach((room, roomId) => {
-      const index = room.users.findIndex(user => user.id === socket.id);
-      if (index !== -1) {
-        room.users.splice(index, 1);
-        io.to(roomId).emit("user-left", {
-          users: room.users
-        });
-        
-        // Clean up empty rooms
-        if (room.users.length === 0) {
-          rooms.delete(roomId);
+    if (currentRoom && username) {
+      const room = rooms.get(currentRoom);
+      if (room) {
+        room.delete(username);
+        if (room.size === 0) {
+          rooms.delete(currentRoom);
+        } else {
+          io.to(currentRoom).emit("user-left", {
+            users: Array.from(room)
+          });
         }
       }
-    });
+    }
   });
 });
 
-const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
