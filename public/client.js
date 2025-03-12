@@ -17,6 +17,63 @@ const TIME_SYNC_THRESHOLD = 0.5; // Sync if time difference is more than 0.5 sec
 const SYNC_RETRY_DELAY = 500; // Wait 500ms before retrying sync
 let autoSync = true; // Default to auto-sync enabled
 
+// Replace socket connection with serverless function calls
+const API_ENDPOINT = '/.netlify/functions/server';
+
+async function emitServerEvent(action, data = {}) {
+  try {
+    const response = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action,
+        roomId: currentRoom,
+        userId: userId,
+        data
+      })
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error sending event to server:', error);
+    return null;
+  }
+}
+
+// Update room joining logic
+async function joinRoom(roomId) {
+  currentRoom = roomId;
+  const response = await emitServerEvent('join');
+  if (response) {
+    console.log('Joined room:', response);
+    // Update UI with room users if needed
+  }
+}
+
+// Update sync function
+async function sendSyncUpdate() {
+  if (!player || !currentRoom) return;
+  
+  const currentTime = player.getCurrentTime();
+  if (typeof currentTime !== 'number') return;
+
+  await emitServerEvent('sync', {
+    videoId: currentVideoId,
+    currentTime,
+    isPlaying: !player.paused,
+    videoIndex: currentVideoIndex
+  });
+}
+
+// Update leave room logic
+async function leaveRoom() {
+  if (currentRoom) {
+    await emitServerEvent('leave');
+    currentRoom = null;
+  }
+}
+
 // Synchronization functions in global scope
 function startSyncInterval() {
     if (syncInterval) {
@@ -37,31 +94,6 @@ function stopSyncInterval() {
     if (syncInterval) {
         clearInterval(syncInterval);
         syncInterval = null;
-    }
-}
-
-function sendSyncUpdate() {
-    if (!player || !player.getCurrentTime || !currentRoom) return;
-    
-    try {
-        const currentTime = parseFloat(player.getCurrentTime());
-        const timestamp = Date.now().toString(); // Convert to string to ensure proper serialization
-        
-        // Only emit if we haven't synced recently and have valid data
-        if (parseInt(timestamp) - lastSyncTime > SYNC_INTERVAL && !isNaN(currentTime)) {
-            console.log(`Sending sync update - Time: ${currentTime.toFixed(2)}, Timestamp: ${timestamp}`);
-            socket.emit("sync-playback", {
-                roomId: currentRoom,
-                currentIndex: currentVideoIndex,
-                videoId: videoQueue[currentVideoIndex]?.id,
-                isPlaying: isPlaying,
-                currentTime: currentTime,
-                timestamp: timestamp // Send as string
-            });
-            lastSyncTime = parseInt(timestamp);
-        }
-    } catch (error) {
-        console.error('Error in sendSyncUpdate:', error);
     }
 }
 

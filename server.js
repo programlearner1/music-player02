@@ -13,11 +13,11 @@ const PORT = process.env.PORT || 3000;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
 app.use(cors());
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname, "public")));
 
 // Serve favicon
 app.get('/favicon.ico', (req, res) => {
-    res.sendFile(path.join(__dirname, 'favicon.ico'));
+    res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
 });
 
 // Playlist API endpoint
@@ -49,7 +49,7 @@ app.get('/api/playlist/:playlistId', async (req, res) => {
 
 // Fallback route for SPA
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Store room states
