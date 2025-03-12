@@ -10,6 +10,60 @@ let lastAttemptedIndex = 0;
 let isPlayerReady = false;
 let pendingPlayRequest = null;
 let socket = io(window.location.origin);  // Initialize socket in global scope
+let syncInterval = null;
+let lastSyncTime = 0;
+const SYNC_INTERVAL = 2000; // Sync every 2 seconds
+const TIME_SYNC_THRESHOLD = 0.5; // Sync if time difference is more than 0.5 seconds
+const SYNC_RETRY_DELAY = 500; // Wait 500ms before retrying sync
+let autoSync = true; // Default to auto-sync enabled
+
+// Synchronization functions in global scope
+function startSyncInterval() {
+    if (syncInterval) {
+        clearInterval(syncInterval);
+    }
+    
+    // Initial sync
+    sendSyncUpdate();
+    
+    syncInterval = setInterval(() => {
+        if (currentRoom && player && isPlaying) {
+            sendSyncUpdate();
+        }
+    }, SYNC_INTERVAL);
+}
+
+function stopSyncInterval() {
+    if (syncInterval) {
+        clearInterval(syncInterval);
+        syncInterval = null;
+    }
+}
+
+function sendSyncUpdate() {
+    if (!player || !player.getCurrentTime || !currentRoom) return;
+    
+    try {
+        const currentTime = parseFloat(player.getCurrentTime());
+        const timestamp = Date.now().toString(); // Convert to string to ensure proper serialization
+        
+        // Only emit if we haven't synced recently and have valid data
+        if (parseInt(timestamp) - lastSyncTime > SYNC_INTERVAL && !isNaN(currentTime)) {
+            console.log(`Sending sync update - Time: ${currentTime.toFixed(2)}, Timestamp: ${timestamp}`);
+            socket.emit("sync-playback", {
+                roomId: currentRoom,
+                currentIndex: currentVideoIndex,
+                videoId: videoQueue[currentVideoIndex]?.id,
+                isPlaying: isPlaying,
+                currentTime: currentTime,
+                timestamp: timestamp // Send as string
+            });
+            lastSyncTime = parseInt(timestamp);
+        }
+    } catch (error) {
+        console.error('Error in sendSyncUpdate:', error);
+    }
+}
 
 // YouTube error codes
 const YT_Errors = {
@@ -118,10 +172,10 @@ function playNextSong() {
     playSong(currentVideoIndex);
 }
 
-function playSong(index) {
+function playSong(index, initialTime = 0) {
     if (!isPlayerReady) {
         console.log('YouTube player not initialized, queueing play request');
-        pendingPlayRequest = { index };
+        pendingPlayRequest = { index, initialTime };
         return;
     }
 
@@ -159,26 +213,35 @@ function playSong(index) {
             return;
         }
 
-        console.log('Attempting to play video:', { id: videoId, title: video.title });
+        console.log('Attempting to play video:', { id: videoId, title: video.title, startTime: initialTime });
         
         retryCount = 0;
         
-        // Emit sync event to server
-        if (socket && socket.connected) {  // Add check for socket connection
+        // Emit sync event to server with exact timestamp
+        if (socket && socket.connected) {
+            const timestamp = Date.now();
+            
             socket.emit("sync-playback", {
                 roomId: currentRoom,
                 currentIndex: index,
                 videoId: videoId,
                 isPlaying: true,
-                currentTime: player.getCurrentTime()
+                currentTime: initialTime,
+                timestamp: timestamp
             });
+            
+            // Start immediate sync interval
+            startSyncInterval();
         } else {
             console.warn('Socket not connected, playback sync disabled');
         }
         
         if (player.cueVideoById) {
             try {
-                player.cueVideoById(videoId);
+                player.cueVideoById({
+                    videoId: videoId,
+                    startSeconds: initialTime
+                });
                 setTimeout(() => {
                     if (player.playVideo) {
                         player.playVideo();
@@ -196,9 +259,9 @@ function playSong(index) {
             console.error('YouTube player methods not available');
             setTimeout(() => {
                 if (isPlayerReady) {
-                    playSong(index);
+                    playSong(index, initialTime);
                 } else {
-                    pendingPlayRequest = { index };
+                    pendingPlayRequest = { index, initialTime };
                 }
             }, 1000);
         }
@@ -348,6 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentThumbnail = document.getElementById('current-thumbnail');
     const currentTitle = document.getElementById('current-title');
     const currentArtist = document.getElementById('current-artist');
+    const syncBtn = document.getElementById("sync-btn");
 
     let roomId = "";
     let visualizerCtx = visualizer ? visualizer.getContext('2d') : null;
@@ -379,8 +443,21 @@ document.addEventListener('DOMContentLoaded', () => {
         item.style.opacity = '0';
         item.style.transform = 'translateX(-20px)';
         
-        // Add click event
+        // Add click event with room synchronization
         item.addEventListener('click', () => {
+            if (!currentRoom) {
+                console.warn('Not in a room, cannot sync playback');
+                return;
+            }
+            
+            // Emit song selection to all room members
+            socket.emit("sync-song-selection", {
+                roomId: currentRoom,
+                selectedIndex: index,
+                videoId: video.id,
+                isPlaying: true
+            });
+            
             playSong(index);
             highlightCurrentSong(index);
         });
@@ -591,14 +668,17 @@ document.addEventListener('DOMContentLoaded', () => {
         playBtn.addEventListener("click", () => {
             if (currentRoom && player) {
                 isPlaying = true;
+                const currentTime = player.getCurrentTime();
                 socket.emit("sync-playback", {
                     roomId: currentRoom,
                     currentIndex: currentVideoIndex,
                     isPlaying: true,
-                    currentTime: player.getCurrentTime()
+                    currentTime: currentTime,
+                    timestamp: Date.now()
                 });
                 player.playVideo();
                 updatePlayPauseButton();
+                startSyncInterval();
             }
         });
     }
@@ -612,10 +692,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     roomId: currentRoom,
                     currentIndex: currentVideoIndex,
                     isPlaying: false,
-                    currentTime: player.getCurrentTime()
+                    currentTime: player.getCurrentTime(),
+                    timestamp: Date.now()
                 });
                 player.pauseVideo();
                 updatePlayPauseButton();
+                stopSyncInterval();
             }
         });
     }
@@ -697,14 +779,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle user-joined event
     socket.on("user-joined", ({ username, users }) => {
-      console.log(`${username} joined the room. Users in room:`, users);
-      updateRoomInfo(currentRoom, users);
+        console.log(`${username} joined the room. Users in room:`, users);
+        updateRoomInfo(currentRoom, users);
+
+        // Request current playback state from other users in the room
+        socket.emit("request-playback-state", { roomId: currentRoom });
+    });
+
+    // Add handler for playback state request
+    socket.on("request-playback-state", () => {
+        if (player && videoQueue.length > 0 && isPlaying) {
+            const currentTime = player.getCurrentTime();
+            const timestamp = Date.now();
+            
+            socket.emit("sync-playback", {
+                roomId: currentRoom,
+                currentIndex: currentVideoIndex,
+                videoId: videoQueue[currentVideoIndex]?.id,
+                isPlaying: isPlaying,
+                currentTime: currentTime,
+                timestamp: timestamp,
+                isInitialSync: true
+            });
+        }
     });
 
     // Handle user-left event
     socket.on("user-left", ({ users }) => {
-      console.log("Users in room:", users);
-      updateRoomInfo(currentRoom, users);
+        console.log("Users in room:", users);
+        updateRoomInfo(currentRoom, users);
+        if (users.length === 0) {
+            stopSyncInterval();
+        }
     });
 
     /* ------------------- YouTube Playlist Integration ------------------- */
@@ -866,28 +972,175 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Add sync-playback event handler
+    // Handle sync button click
+    if (syncBtn) {
+        // Add rotating animation class for sync button
+        syncBtn.addEventListener('click', () => {
+            if (currentRoom && player) {
+                // Add rotation animation
+                syncBtn.querySelector('i').style.animation = 'rotate 1s linear';
+                
+                // Request sync from other users
+                socket.emit("request-sync", {
+                    roomId: currentRoom
+                });
+                
+                // Remove rotation animation after 1 second
+                setTimeout(() => {
+                    syncBtn.querySelector('i').style.animation = '';
+                }, 1000);
+            }
+        });
+    }
+
+    // Add new socket event handler for sync requests
+    socket.on("request-sync", () => {
+        if (player && videoQueue.length > 0 && isPlaying) {
+            const currentTime = player.getCurrentTime();
+            const timestamp = Date.now();
+            
+            socket.emit("sync-playback", {
+                roomId: currentRoom,
+                currentIndex: currentVideoIndex,
+                videoId: videoQueue[currentVideoIndex]?.id,
+                isPlaying: isPlaying,
+                currentTime: currentTime,
+                timestamp: timestamp,
+                isInitialSync: true // Force full sync
+            });
+        }
+    });
+
+    // Add CSS animation for sync button
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Modify the existing sync-playback event handler to respect manual sync
     socket.on("sync-playback", (data) => {
-        if (!player) return;
+        if (!player || !data) return;
         
-        currentVideoIndex = data.currentIndex;
-        isPlaying = data.isPlaying;
+        try {
+            const currentTime = player.getCurrentTime();
+            const serverTime = parseFloat(data.currentTime);
+            const timestamp = data.timestamp ? parseInt(data.timestamp) : Date.now(); // Handle both string and number
+            const now = Date.now();
+            
+            // Ensure we have valid numbers
+            if (isNaN(serverTime) || isNaN(timestamp) || isNaN(now)) {
+                console.error('Invalid sync data received:', { 
+                    serverTime, 
+                    timestamp, 
+                    now,
+                    rawTimestamp: data.timestamp // Log raw timestamp for debugging
+                });
+                return;
+            }
+            
+            const latency = Math.max(0, (now - timestamp) / 1000); // Ensure non-negative latency
+            const adjustedServerTime = serverTime + latency;
+            const timeDiff = Math.abs(currentTime - adjustedServerTime);
+            
+            console.log(`Time sync - Current: ${currentTime.toFixed(2)}, Server: ${serverTime.toFixed(2)}, Adjusted: ${adjustedServerTime.toFixed(2)}, Diff: ${timeDiff.toFixed(2)}, Latency: ${latency.toFixed(2)}s`);
+            
+            // Always process initial syncs or different video
+            if (data.isInitialSync && data.currentIndex !== currentVideoIndex) {
+                console.log('Initial sync or different video - switching to video index:', data.currentIndex);
+                playSong(data.currentIndex, adjustedServerTime);
+                return;
+            }
+            
+            // Update current video index and playing state
+            if (data.currentIndex !== undefined) {
+                currentVideoIndex = data.currentIndex;
+            }
+            if (data.isPlaying !== undefined) {
+                isPlaying = data.isPlaying;
+            }
+            
+            // Sync time if it's a manual sync, initial sync, or if the difference is significant
+            if (data.isInitialSync || timeDiff > TIME_SYNC_THRESHOLD) {
+                console.log(`Syncing time - Seeking to: ${adjustedServerTime}`);
+                
+                // Ensure we're seeking to a valid time
+                if (adjustedServerTime >= 0) {
+                    player.seekTo(adjustedServerTime, true);
+                    
+                    // Verify the seek was successful
+                    setTimeout(() => {
+                        const newTime = player.getCurrentTime();
+                        const newDiff = Math.abs(newTime - (adjustedServerTime + (SYNC_RETRY_DELAY/1000)));
+                        
+                        if (newDiff > TIME_SYNC_THRESHOLD) {
+                            console.log(`Sync retry needed - New diff: ${newDiff.toFixed(2)}`);
+                            player.seekTo(adjustedServerTime + (SYNC_RETRY_DELAY/1000), true);
+                            
+                            // More frequent sync checks temporarily
+                            const tempInterval = setInterval(() => {
+                                if (!player || !isPlaying) {
+                                    clearInterval(tempInterval);
+                                    return;
+                                }
+                                
+                                const currentDiff = Math.abs(player.getCurrentTime() - (adjustedServerTime + (Date.now() - timestamp) / 1000));
+                                if (currentDiff > TIME_SYNC_THRESHOLD) {
+                                    const newAdjustedTime = adjustedServerTime + (Date.now() - timestamp) / 1000;
+                                    console.log(`Temp sync - Seeking to: ${newAdjustedTime.toFixed(2)}`);
+                                    player.seekTo(newAdjustedTime, true);
+                                } else {
+                                    clearInterval(tempInterval);
+                                }
+                            }, 500);
+                            
+                            setTimeout(() => clearInterval(tempInterval), 5000);
+                        }
+                    }, SYNC_RETRY_DELAY);
+                }
+            }
+            
+            // Update playback state
+            if (player.getPlayerState) {
+                const playerState = player.getPlayerState();
+                if (isPlaying && playerState !== YT.PlayerState.PLAYING) {
+                    player.playVideo();
+                } else if (!isPlaying && playerState === YT.PlayerState.PLAYING) {
+                    player.pauseVideo();
+                }
+            }
+            
+            // Update UI
+            updatePlayPauseButton();
+            highlightCurrentSong(currentVideoIndex);
+            updateNowPlayingUI(videoQueue[currentVideoIndex]);
+            
+            // Start sync interval if needed
+            if (data.isInitialSync && isPlaying) {
+                startSyncInterval();
+            }
+        } catch (error) {
+            console.error('Error in sync-playback handler:', error);
+        }
+    });
+
+    // Add handler for song selection sync
+    socket.on("song-selected", (data) => {
+        console.log('Received song selection:', data);
         
-        if (data.currentTime) {
-            const timeDiff = Math.abs(player.getCurrentTime() - data.currentTime);
-            if (timeDiff > 1) { // Only seek if difference is more than 1 second
-                player.seekTo(data.currentTime);
+        if (data.selectedIndex !== undefined && data.selectedIndex < videoQueue.length) {
+            currentVideoIndex = data.selectedIndex;
+            playSong(currentVideoIndex);
+            highlightCurrentSong(currentVideoIndex);
+            
+            // Update UI elements
+            updatePlaylistUI(currentVideoIndex);
+            if (videoQueue[currentVideoIndex]) {
+                updateNowPlayingUI(videoQueue[currentVideoIndex]);
             }
         }
-        
-        if (isPlaying) {
-            player.playVideo();
-        } else {
-            player.pauseVideo();
-        }
-        
-        updatePlayPauseButton();
-        highlightCurrentSong(currentVideoIndex);
-        updateNowPlayingUI(videoQueue[currentVideoIndex]);
     });
 });
