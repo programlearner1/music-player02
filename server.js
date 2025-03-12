@@ -12,6 +12,11 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.static("public")); // Serve files from /public
 
+// Serve favicon
+app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
+});
+
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
@@ -24,8 +29,10 @@ const io = new Server(server, {
   },
 });
 
-let rooms = {};
-const songs = [
+// Store room states
+const rooms = new Map();
+
+let songs = [
   { title: "Ah bandham abhadhama", artist: "Artist 1", url: "music/song2.mp3", image: "music/download.jpeg" },
   { title: "Rangule", artist: "Artist 2", url: "music/song3.mp3", image: "music/raniji.jpg" },
   { title: "Rayani kathale", artist: "Artist 3", url: "music/song4.mp3", image: "music/bachan.jpg" },
@@ -36,61 +43,119 @@ io.on("connection", (socket) => {
 
   socket.on("join-room", ({ roomId, username }) => {
     socket.join(roomId);
-    if (!rooms[roomId]) {
-      rooms[roomId] = { users: [], currentSongIndex: 0, isPlaying: false, currentTime: 0, videoId: null, videoTime: 0 };
+    
+    // Initialize room if it doesn't exist
+    if (!rooms.has(roomId)) {
+      rooms.set(roomId, {
+        users: [],
+        playlist: [],
+        currentIndex: 0,
+        isPlaying: false
+      });
     }
-    rooms[roomId].users.push({ id: socket.id, username });
-    io.to(roomId).emit("user-joined", { username, users: rooms[roomId].users });
+    
+    const room = rooms.get(roomId);
+    room.users.push({ id: socket.id, username });
+    
+    // Send current room state to new user
+    socket.emit("sync-playlist-from-room", {
+      videos: room.playlist,
+      currentIndex: room.currentIndex,
+      isPlaying: room.isPlaying
+    });
+    
+    // Notify others about new user
+    io.to(roomId).emit("user-joined", {
+      username,
+      users: room.users
+    });
+  });
+
+  socket.on("sync-playlist-to-room", (data) => {
+    const room = rooms.get(data.roomId);
+    if (room) {
+      room.playlist = data.videos;
+      room.currentIndex = data.currentIndex;
+      room.isPlaying = data.isPlaying;
+      
+      // Broadcast to all other users in the room
+      socket.to(data.roomId).emit("sync-playlist-from-room", {
+        videos: data.videos,
+        currentIndex: data.currentIndex,
+        isPlaying: data.isPlaying
+      });
+    }
+  });
+
+  socket.on("sync-playback", (data) => {
+    const room = rooms.get(data.roomId);
+    if (room) {
+      room.currentIndex = data.currentIndex;
+      room.isPlaying = data.isPlaying;
+      
+      // Broadcast to all other users in the room
+      socket.to(data.roomId).emit("sync-playback", {
+        currentIndex: data.currentIndex,
+        isPlaying: data.isPlaying,
+        currentTime: data.currentTime
+      });
+    }
   });
 
   socket.on("play-song", ({ roomId }) => {
-    if (rooms[roomId]) {
-      rooms[roomId].isPlaying = true;
-      io.to(roomId).emit("play-song", { song: songs[rooms[roomId].currentSongIndex], isPlaying: true, currentTime: rooms[roomId].currentTime });
+    if (rooms.has(roomId)) {
+      const room = rooms.get(roomId);
+      room.isPlaying = true;
+      io.to(roomId).emit("play-song", { song: songs[room.currentIndex], isPlaying: true, currentTime: room.currentTime });
     }
   });
 
   socket.on("pause-song", ({ roomId }) => {
-    if (rooms[roomId]) {
-      rooms[roomId].isPlaying = false;
+    if (rooms.has(roomId)) {
+      const room = rooms.get(roomId);
+      room.isPlaying = false;
       io.to(roomId).emit("pause-song");
     }
   });
 
   socket.on("next-song", ({ roomId }) => {
-    if (rooms[roomId]) {
-      rooms[roomId].currentSongIndex = (rooms[roomId].currentSongIndex + 1) % songs.length;
-      rooms[roomId].isPlaying = true;
-      rooms[roomId].currentTime = 0;
-      io.to(roomId).emit("play-song", { song: songs[rooms[roomId].currentSongIndex], isPlaying: true, currentTime: 0 });
+    if (rooms.has(roomId)) {
+      const room = rooms.get(roomId);
+      room.currentIndex = (room.currentIndex + 1) % songs.length;
+      room.isPlaying = true;
+      room.currentTime = 0;
+      io.to(roomId).emit("play-song", { song: songs[room.currentIndex], isPlaying: true, currentTime: 0 });
     }
   });
 
   socket.on("previous-song", ({ roomId }) => {
-    if (rooms[roomId]) {
-      rooms[roomId].currentSongIndex = (rooms[roomId].currentSongIndex - 1 + songs.length) % songs.length;
-      rooms[roomId].isPlaying = true;
-      rooms[roomId].currentTime = 0;
-      io.to(roomId).emit("play-song", { song: songs[rooms[roomId].currentSongIndex], isPlaying: true, currentTime: 0 });
+    if (rooms.has(roomId)) {
+      const room = rooms.get(roomId);
+      room.currentIndex = (room.currentIndex - 1 + songs.length) % songs.length;
+      room.isPlaying = true;
+      room.currentTime = 0;
+      io.to(roomId).emit("play-song", { song: songs[room.currentIndex], isPlaying: true, currentTime: 0 });
     }
   });
 
   socket.on("update-time", ({ roomId, currentTime }) => {
-    if (rooms[roomId]) {
-      rooms[roomId].currentTime = currentTime;
+    if (rooms.has(roomId)) {
+      const room = rooms.get(roomId);
+      room.currentTime = currentTime;
     }
   });
 
   socket.on("syncPlay", ({ roomId, videoId, time }) => {
-    if (rooms[roomId]) {
-      rooms[roomId].videoId = videoId;
-      rooms[roomId].videoTime = time;
+    if (rooms.has(roomId)) {
+      const room = rooms.get(roomId);
+      room.videoId = videoId;
+      room.videoTime = time;
       io.to(roomId).emit("syncPlay", { videoId, time });
     }
   });
 
   socket.on("syncPause", ({ roomId }) => {
-    if (rooms[roomId]) {
+    if (rooms.has(roomId)) {
       io.to(roomId).emit("syncPause");
     }
   });
@@ -108,14 +173,21 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    for (let roomId in rooms) {
-      rooms[roomId].users = rooms[roomId].users.filter((user) => user.id !== socket.id);
-      if (rooms[roomId].users.length === 0) {
-        delete rooms[roomId];
-      } else {
-        io.to(roomId).emit("user-left", { users: rooms[roomId].users });
+    // Remove user from all rooms they were in
+    rooms.forEach((room, roomId) => {
+      const index = room.users.findIndex(user => user.id === socket.id);
+      if (index !== -1) {
+        room.users.splice(index, 1);
+        io.to(roomId).emit("user-left", {
+          users: room.users
+        });
+        
+        // Clean up empty rooms
+        if (room.users.length === 0) {
+          rooms.delete(roomId);
+        }
       }
-    }
+    });
   });
 });
 

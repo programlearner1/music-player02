@@ -4,233 +4,266 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Music Sync App</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://www.youtube.com/iframe_api"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> <!-- Font Awesome for icons -->
   <style>
+    :root {
+      --primary-color: #1DB954;
+      --secondary-color: #23a6d5;
+      --background-start: #ee7752;
+      --background-mid: #e73c7e;
+      --background-end: #23d5ab;
+      --text-color: #FFFFFF;
+      --container-bg: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] {
+      --primary-color: #1DB954;
+      --secondary-color: #23a6d5;
+      --background-start: #1a1a1a;
+      --background-mid: #2a2a2a;
+      --background-end: #333333;
+      --text-color: #FFFFFF;
+      --container-bg: rgba(255, 255, 255, 0.05);
+    }
+
+    [data-theme="synthwave"] {
+      --primary-color: #ff00ff;
+      --secondary-color: #00ffff;
+      --background-start: #2b1055;
+      --background-mid: #7597de;
+      --background-end: #ff2975;
+      --text-color: #FFFFFF;
+      --container-bg: rgba(255, 255, 255, 0.1);
+    }
+
     /* General Styles */
-    body {
-      font-family: 'Arial', sans-serif;
-      background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab); /* Gradient background */
-      background-size: 400% 400%; /* Required for gradient animation */
-      animation: gradientBG 15s ease infinite; /* Animated gradient */
-      color: #FFFFFF;
+    * {
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(-45deg, var(--background-start), var(--background-mid), var(--secondary-color), var(--background-end));
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+      color: var(--text-color);
+      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      overflow: hidden; /* Prevent scrollbars */
+      padding: 20px;
     }
 
-    /* Gradient Animation */
     @keyframes gradientBG {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
 
-    /* Main Container */
     .container {
-      position: relative;
-      max-width: 600px;
+      max-width: 800px;
       width: 100%;
-      padding: 30px;
-      background: rgba(255, 255, 255, 0.1); /* Semi-transparent white */
+      background: var(--container-bg);
+      backdrop-filter: blur(10px);
       border-radius: 20px;
-      backdrop-filter: blur(10px); /* Frosted glass effect */
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
-      text-align: center;
-      animation: fadeIn 1s ease-in-out; /* Fade-in animation */
+      padding: 30px;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      transform: translateY(20px);
+      opacity: 0;
+      animation: fadeIn 0.6s ease forwards;
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
-    /* Header Section */
+    /* Header Styles */
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
     header h1 {
       font-size: 2.5em;
-      margin: 0 0 20px;
-      color: #FFFFFF;
-      font-weight: bold;
-      text-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-      animation: glow 2s infinite alternate; /* Glow animation */
+      font-weight: 700;
+      background: linear-gradient(to right, #fff, #a8edea);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -moz-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      -moz-text-fill-color: transparent;
+      color: transparent;
+      animation: pulse 2s infinite;
+      text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
     }
 
-    @keyframes glow {
-      from { text-shadow: 0 0 10px rgba(255, 255, 255, 0.7), 0 0 20px rgba(255, 255, 255, 0.7); }
-      to { text-shadow: 0 0 20px rgba(255, 255, 255, 0.9), 0 0 30px rgba(255, 255, 255, 0.9); }
+    @supports not (background-clip: text) {
+      header h1 {
+        background: none;
+        color: #fff;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
     }
 
-    /* Room Controls */
-    #room-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    /* Input Styles */
+    .input-group {
       margin-bottom: 20px;
     }
 
-    #room-controls input {
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.2); /* Semi-transparent input */
-      color: #FFFFFF;
-      font-size: 1em;
-      outline: none;
-      transition: background 0.3s, box-shadow 0.3s;
-    }
-
-    #room-controls input:focus {
-      background: rgba(255, 255, 255, 0.3);
-      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-    }
-
-    #room-controls input::placeholder {
-      color: rgba(255, 255, 255, 0.7); /* Light placeholder */
-    }
-
-    #join-room-btn {
-      background: linear-gradient(135deg, #1DB954, #1AA34A); /* Spotify green gradient */
-      border: none;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1em;
-      font-weight: bold;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    #join-room-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(29, 185, 84, 0.4); /* Glow effect */
-    }
-
-    #join-room-btn:active {
-      transform: translateY(0);
-    }
-
-    /* YouTube Playlist Input */
-    #youtube-playlist-url {
+    input {
       width: 100%;
-      padding: 12px;
+      padding: 12px 20px;
+      margin: 8px 0;
       border: none;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.2);
-      color: #FFFFFF;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
       font-size: 1em;
-      margin-bottom: 20px;
+      transition: all 0.3s ease;
+    }
+
+    input:focus {
       outline: none;
-      transition: background 0.3s, box-shadow 0.3s;
+      background: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
     }
 
-    #youtube-playlist-url:focus {
-      background: rgba(255, 255, 255, 0.3);
-      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-    }
-
-    #youtube-playlist-url::placeholder {
+    input::placeholder {
       color: rgba(255, 255, 255, 0.7);
     }
 
-    #load-playlist-btn {
-      background: linear-gradient(135deg, #FF416C, #FF4B2B); /* Red gradient */
-      border: none;
-      color: white;
+    /* Button Styles */
+    button {
+      width: 100%;
       padding: 12px 20px;
-      border-radius: 8px;
-      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(45deg, #1DB954, #1ed760);
+      color: white;
       font-size: 1em;
-      font-weight: bold;
-      transition: transform 0.2s, box-shadow 0.2s;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 10px 0;
     }
 
-    #load-playlist-btn:hover {
+    button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(255, 65, 108, 0.4); /* Glow effect */
+      box-shadow: 0 5px 15px rgba(29, 185, 84, 0.4);
     }
 
-    #load-playlist-btn:active {
+    button:active {
       transform: translateY(0);
     }
 
-    /* Playback Controls */
+    /* Player Controls */
     #playback-controls {
       display: flex;
       justify-content: center;
       gap: 15px;
-      margin-top: 20px;
+      margin: 20px 0;
     }
 
     #playback-controls button {
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1em;
-      font-weight: bold;
-      transition: transform 0.2s, box-shadow 0.2s;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(45deg, #23a6d5, #23d5ab);
     }
 
-    #playback-controls button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2); /* Glow effect */
+    #playback-controls button i {
+      font-size: 1.2em;
     }
 
-    #playback-controls button:active {
-      transform: translateY(0);
+    /* Player Container */
+    #player {
+      width: 100%;
+      border-radius: 15px;
+      overflow: hidden;
+      margin: 20px 0;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
     }
 
-    /* Playlist Section */
+    /* Playlist Styles */
     #playlist {
       margin-top: 20px;
-      text-align: left;
+      max-height: 300px;
+      overflow-y: auto;
     }
 
-    #playlist h3 {
-      font-size: 1.5em;
-      margin-bottom: 10px;
-      color: #FFFFFF;
-      font-weight: bold;
+    #playlist::-webkit-scrollbar {
+      width: 8px;
     }
 
-    #playlist ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
+    #playlist::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
     }
 
-    #playlist li {
-      padding: 12px;
+    #playlist::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+    }
+
+    .playlist-item {
+      padding: 15px;
       margin: 8px 0;
       background: rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
-      transition: background 0.3s, transform 0.2s;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    #playlist li:hover {
-      background: rgba(255, 255, 255, 0.2);
+    .playlist-item:hover {
       transform: translateX(5px);
+      background: rgba(255, 255, 255, 0.2);
     }
 
-    /* Audio Player */
-    #audio-player {
-      width: 100%;
-      margin-top: 20px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.1);
+    .playlist-item img {
+      width: 50px;
+      height: 50px;
+      border-radius: 5px;
+      object-fit: cover;
+    }
+
+    /* Loading Animation */
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s infinite linear;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     /* Responsive Design */
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
       .container {
         padding: 20px;
       }
@@ -239,41 +272,245 @@
         font-size: 2em;
       }
 
-      #room-controls input,
-      #youtube-playlist-url,
-      #playback-controls button,
-      #playlist li {
-        padding: 10px;
+      #playback-controls button {
+        width: 45px;
+        height: 45px;
+      }
+    }
+
+    /* Theme Switcher */
+    .theme-switcher {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    .theme-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .theme-btn:hover {
+      transform: scale(1.1);
+      border-color: var(--text-color);
+    }
+
+    /* Visualizer Container */
+    .visualizer-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      opacity: 0.3;
+    }
+
+    /* Now Playing Section */
+    .now-playing {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 15px;
+      padding: 20px;
+      margin: 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      transform: translateY(20px);
+      opacity: 0;
+      animation: slideUp 0.6s ease forwards;
+    }
+
+    .now-playing img {
+      width: 100px;
+      height: 100px;
+      border-radius: 10px;
+      object-fit: cover;
+    }
+
+    .now-playing-info {
+      flex: 1;
+    }
+
+    .song-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .song-artist {
+      font-size: 0.9em;
+      opacity: 0.8;
+    }
+
+    /* Progress Bar */
+    .progress-container {
+      width: 100%;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      margin: 10px 0;
+      cursor: pointer;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--primary-color);
+      border-radius: 5px;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    /* Room Info */
+    .room-info {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      display: none;
+    }
+
+    .room-info.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    /* User List */
+    .user-list {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 15px;
+      max-width: 200px;
+      display: none;
+    }
+
+    .user-list.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .user-list h3 {
+      margin-bottom: 10px;
+      font-size: 1em;
+    }
+
+    .user-list ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .user-list li {
+      padding: 5px 0;
+      font-size: 0.9em;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .user-list li::before {
+      content: '•';
+      color: var(--primary-color);
+    }
+
+    @keyframes slideUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
       }
     }
   </style>
 </head>
 <body>
+  <div class="theme-switcher">
+    <button class="theme-btn" data-theme="default" style="background: linear-gradient(45deg, #ee7752, #e73c7e)"></button>
+    <button class="theme-btn" data-theme="dark" style="background: linear-gradient(45deg, #1a1a1a, #333333)"></button>
+    <button class="theme-btn" data-theme="synthwave" style="background: linear-gradient(45deg, #2b1055, #ff2975)"></button>
+  </div>
+
+  <div class="room-info">
+    <span>Room: <strong id="current-room">-</strong></span>
+    <span>Users: <strong id="user-count">0</strong></span>
+  </div>
+
+  <div class="user-list">
+    <h3>Connected Users</h3>
+    <ul id="connected-users"></ul>
+  </div>
+
+  <div class="visualizer-container">
+    <canvas id="visualizer"></canvas>
+  </div>
+
   <div class="container">
     <header>
       <h1>Music Sync App</h1>
     </header>
-    <div id="room-controls">
-      <input type="text" id="room-id" placeholder="Enter Room ID">
-      <input type="text" id="username" placeholder="Enter Your Name">
-      <button id="join-room-btn">Join Room</button>
+    
+    <audio id="audio-player"></audio>
+    
+    <div class="input-group">
+      <input type="text" id="room-id" placeholder="Enter Room ID" autocomplete="off">
+      <input type="text" id="username" placeholder="Enter Your Name" autocomplete="off">
+      <button id="join-room-btn">
+        <i class="fas fa-sign-in-alt"></i> Join Room
+      </button>
     </div>
-    <input type="text" id="youtube-playlist-url" placeholder="Paste YouTube playlist link">
-    <button id="load-playlist-btn">Load Playlist</button>
-    <div id="player"></div>  <!-- YouTube Player Loads Here -->
+
+    <div class="input-group">
+      <input type="text" id="youtube-playlist-url" placeholder="Paste YouTube playlist link" autocomplete="off">
+      <button id="load-playlist-btn">
+        <i class="fas fa-music"></i> Load Playlist
+      </button>
+    </div>
+
+    <div id="player"></div>
+
     <div id="playback-controls" style="display: none;">
-      <button id="play-btn"><i class="fas fa-play"></i></button>
-      <button id="pause-btn"><i class="fas fa-pause"></i></button>
-      <button id="next-btn"><i class="fas fa-forward"></i></button>
-      <button id="previous-btn"><i class="fas fa-backward"></i></button>
+      <button id="previous-btn" title="Previous">
+        <i class="fas fa-backward"></i>
+      </button>
+      <button id="play-btn" title="Play">
+        <i class="fas fa-play"></i>
+      </button>
+      <button id="pause-btn" title="Pause">
+        <i class="fas fa-pause"></i>
+      </button>
+      <button id="next-btn" title="Next">
+        <i class="fas fa-forward"></i>
+      </button>
     </div>
+
     <div id="playlist"></div>
-    <audio id="audio-player" controls></audio>
+
+    <!-- Add Now Playing Section -->
+    <div class="now-playing" style="display: none;">
+      <img id="current-thumbnail" src="" alt="Song Thumbnail">
+      <div class="now-playing-info">
+        <div class="song-title" id="current-title">-</div>
+        <div class="song-artist" id="current-artist">-</div>
+        <div class="progress-container">
+          <div class="progress-bar"></div>
+        </div>
+        <div class="time-info">
+          <span id="current-time">0:00</span> / <span id="duration">0:00</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="client.js"></script>
-  <script src="https://www.youtube.com/iframe_api"></script>
-  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </body>
 </html>
