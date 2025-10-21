@@ -115,29 +115,130 @@
   <!-- YouTube IFrame API -->
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    let player; // Declare player globally
-    
-    function onYouTubeIframeAPIReady() {
-      console.log("YouTube API Ready");
-
-      setTimeout(() => { // Wait for API to fully load
-        player = new YT.Player('player-container', {
-          height: '360',
-          width: '640',
-          videoId: '',
-          events: {
-            'onReady': onPlayerReady,
-            'onStateChange': onPlayerStateChange
-          }
-        });
-      }, 500); // Delay initialization to prevent premature calls
-    }
-
+    let player;
     let playlist = [];
-    const apiKey = 'AIzaSyB8Phtr6Jlm9wRm-Ja51QhNZiA1zM4541o'; // Replace with your YouTube API key
+    const apiKey = process.env.YOUTUBE_API_KEY || 'YOUR_API_KEY_HERE'; // Use environment variable
+    const thumbnail = document.getElementById('thumbnail');
     const playlistElement = document.getElementById('playlist');
     const playButton = document.getElementById('play-button');
     const pauseButton = document.getElementById('pause-button');
+
+    // Load YouTube IFrame API with error handling
+    function loadYouTubeAPI() {
+        return new Promise((resolve, reject) => {
+            if (window.YT) {
+                resolve();
+                return;
+            }
+
+            window.onYouTubeIframeAPIReady = () => {
+                resolve();
+                initializePlayer();
+            };
+
+            const tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            tag.onerror = reject;
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        });
+    }
+
+    // Initialize player with error handling
+    function initializePlayer() {
+        try {
+            player = new YT.Player('player-container', {
+                height: '0',
+                width: '0',
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError
+                }
+            });
+        } catch (error) {
+            console.error('Error initializing player:', error);
+            showError('Failed to initialize video player');
+        }
+    }
+
+    // Handle player errors
+    function onPlayerError(event) {
+        console.error('YouTube player error:', event.data);
+        let errorMessage = '';
+        
+        switch (event.data) {
+            case 2:
+                errorMessage = 'Invalid video ID. The video might have been removed or is private.';
+                break;
+            case 5:
+                errorMessage = 'The requested content cannot be played in an HTML5 player.';
+                break;
+            case 100:
+                errorMessage = 'Video not found or has been removed.';
+                break;
+            case 101:
+            case 150:
+                errorMessage = 'Video playback not allowed. The owner has restricted embedding.';
+                break;
+            default:
+                errorMessage = 'An error occurred with the YouTube player.';
+        }
+        
+        showError(errorMessage);
+    }
+
+    // Show error message to user
+    function showError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'player-error';
+        errorDiv.innerHTML = `
+            <p>${message}</p>
+            <div class="error-buttons">
+                <button onclick="retryLoadPlayer()">Retry</button>
+                <button onclick="skipToNextVideo()">Next Video</button>
+            </div>
+        `;
+        document.getElementById('player-container').appendChild(errorDiv);
+
+        // Auto-hide error message after 5 seconds
+        setTimeout(() => {
+            if (errorDiv && errorDiv.parentNode) {
+                errorDiv.remove();
+            }
+        }, 5000);
+    }
+
+    // Retry loading player
+    function retryLoadPlayer() {
+        const errorDiv = document.querySelector('.player-error');
+        if (errorDiv) {
+            errorDiv.remove();
+        }
+        loadYouTubeAPI();
+    }
+
+    // Skip to next video
+    function skipToNextVideo() {
+        const errorDiv = document.querySelector('.player-error');
+        if (errorDiv) {
+            errorDiv.remove();
+        }
+        if (playlist.length > 0) {
+            const currentIndex = playlist.findIndex(video => video.id === player.getVideoData().video_id);
+            if (currentIndex < playlist.length - 1) {
+                playSong(currentIndex + 1);
+            }
+        }
+    }
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        loadYouTubeAPI().catch(error => {
+            console.error('Error loading YouTube API:', error);
+            showError('Failed to load YouTube player. Please check your internet connection.');
+        });
+    });
 
     // Extract playlist ID from the pasted YouTube URL
     function extractPlaylistId(url) {
