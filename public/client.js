@@ -124,8 +124,12 @@ function applySyncPlayback(data) {
 // Playback Control
 // ================================
 function playCurrentVideo() {
-    if (!player || currentVideoIndex < 0 || currentVideoIndex >= videoQueue.length) return;
+    if (!player || currentVideoIndex < 0 || currentVideoIndex >= videoQueue.length) {
+        console.log('Player not ready, bad index, or empty queue:', player, currentVideoIndex, videoQueue.length);
+        return;
+    }
     const video = videoQueue[currentVideoIndex];
+    console.log('About to play video:', video);
     if (!video || !isValidYouTubeVideoId(video.id)) {
         handlePlayerError('Invalid video ID. Skipping to next video...');
         if (currentVideoIndex < videoQueue.length - 1) {
@@ -140,6 +144,7 @@ function playCurrentVideo() {
         updateNowPlayingUI(video);
         sendSyncUpdate();
     } catch (error) {
+        console.error('Error playing video:', error, video);
         handlePlayerError('Failed to play video. Trying next video...');
         if (currentVideoIndex < videoQueue.length - 1) {
             currentVideoIndex++;
@@ -147,6 +152,7 @@ function playCurrentVideo() {
         }
     }
 }
+
 
 function updateNowPlayingUI(video) {
     const nowPlayingSection = document.querySelector('.now-playing');
