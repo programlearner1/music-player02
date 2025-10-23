@@ -12,6 +12,7 @@ let lastSyncTime = 0;
 let pendingSyncData = null;
 let playerReady = false;
 let playlistLoaded = false;
+let pendingPlayIndex = null;
 
 // ================================
 // Connection & Player Initialization
@@ -82,10 +83,13 @@ socket.on('playlist-loaded', (videos) => {
     videoQueue = videos;
     displayPlaylist();
     playlistLoaded = true;
-    if (playerReady) {
-        playCurrentVideo();
+    // No autoplay: only play if a pending index is queued after user action
+    if (playerReady && pendingPlayIndex !== null) {
+        playCurrentVideo(pendingPlayIndex);
+        pendingPlayIndex = null;
     }
 });
+
 
 socket.on('sync-playback', (data) => {
     if (!videoQueue.length) {
@@ -125,18 +129,20 @@ function applySyncPlayback(data) {
 // ================================
 // Playback Control
 // ================================
-function playCurrentVideo() {
+function playCurrentVideo(index = null) {
+    if (index !== null) currentVideoIndex = index;
     if (!player || currentVideoIndex < 0 || currentVideoIndex >= videoQueue.length) {
         console.log('Player not ready, bad index, or empty queue:', player, currentVideoIndex, videoQueue.length);
+        // Queue the play if player isn't ready:
+        pendingPlayIndex = index !== null ? index : currentVideoIndex;
         return;
     }
     const video = videoQueue[currentVideoIndex];
-    console.log('About to play video:', video);
     if (!video || !isValidYouTubeVideoId(video.id)) {
         handlePlayerError('Invalid video ID. Skipping to next video...');
         if (currentVideoIndex < videoQueue.length - 1) {
             currentVideoIndex++;
-            setTimeout(playCurrentVideo, 1000);
+            setTimeout(() => playCurrentVideo(), 1000);
         }
         return;
     }
@@ -150,10 +156,11 @@ function playCurrentVideo() {
         handlePlayerError('Failed to play video. Trying next video...');
         if (currentVideoIndex < videoQueue.length - 1) {
             currentVideoIndex++;
-            setTimeout(playCurrentVideo, 1000);
+            setTimeout(() => playCurrentVideo(), 1000);
         }
     }
 }
+
 
 
 function updateNowPlayingUI(video) {
@@ -396,11 +403,14 @@ function onYouTubeIframeAPIReady() {
 }
 
 function onPlayerReady(event) {
-    console.log("YouTube Player is Ready!");
     playerReady = true;
-    if (playlistLoaded) playCurrentVideo();
+    if (pendingPlayIndex !== null && playlistLoaded) {
+        playCurrentVideo(pendingPlayIndex);
+        pendingPlayIndex = null;
+    }
 }
 
+    // You may want to keep your `console.log()` here if you wish.
 
 function onPlayerStateChange(event) {
     switch (event.data) {
@@ -495,9 +505,14 @@ function displayPlaylist() {
             </div>
         `;
         item.addEventListener('click', () => {
-            currentVideoIndex = index;
-            playCurrentVideo();
-        });
+    if (playerReady) {
+        playCurrentVideo(index);
+    } else {
+        pendingPlayIndex = index;
+        alert("Please wait - the player is loading.");
+    }
+});
+
         playlistContainer.appendChild(item);
     });
 }
