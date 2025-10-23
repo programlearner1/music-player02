@@ -10,6 +10,8 @@ let currentVideoIndex = 0;
 let videoQueue = [];
 let lastSyncTime = 0;
 let pendingSyncData = null;
+let playerReady = false;
+let playlistLoaded = false;
 
 // ================================
 // Connection & Player Initialization
@@ -79,9 +81,9 @@ function initializeYouTubePlayer() {
 socket.on('playlist-loaded', (videos) => {
     videoQueue = videos;
     displayPlaylist();
-    if (pendingSyncData) {
-        applySyncPlayback(pendingSyncData);
-        pendingSyncData = null;
+    playlistLoaded = true;
+    if (playerReady) {
+        playCurrentVideo();
     }
 });
 
@@ -389,12 +391,16 @@ function setupThemeSwitcher() {
 // YouTube Player Events
 // ================================
 function onYouTubeIframeAPIReady() {
+    console.log("IFrame API is ready — initializing player...");
     initializeYouTubePlayer();
 }
 
 function onPlayerReady(event) {
-    console.log('YouTube player is ready');
+    console.log("YouTube Player is Ready!");
+    playerReady = true;
+    if (playlistLoaded) playCurrentVideo();
 }
+
 
 function onPlayerStateChange(event) {
     switch (event.data) {
@@ -458,7 +464,7 @@ async function loadPlaylist(url) {
             displayPlaylist();
             if (videoQueue.length > 0) {
                 currentVideoIndex = 0;
-                playCurrentVideo();
+                //playCurrentVideo();
             }
         } else if (response && response.error) {
             alert('Error loading playlist: ' + response.message);
